@@ -112,13 +112,14 @@ class MeanAveragePrecision2d(MetricBase):
             metric[t] = {}
             aps_t = np.zeros((1, self.num_classes), dtype=np.float32)
             for class_id in range(self.num_classes):
-                aps_t[0, class_id], precision, recall = self._evaluate_class(
+                aps_t[0, class_id], precision, recall, confidence = self._evaluate_class(
                     class_id, t, recall_thresholds, mpolicy
                 )
                 metric[t][class_id] = {}
                 metric[t][class_id]["ap"] = aps_t[0, class_id]
                 metric[t][class_id]["precision"] = precision
                 metric[t][class_id]["recall"] = recall
+                metric[t][class_id]["confidence"] = confidence
             aps = np.concatenate((aps, aps_t), axis=0)
         metric["mAP"] = aps.mean(axis=1).mean(axis=0)
         return metric
@@ -145,8 +146,10 @@ class MeanAveragePrecision2d(MetricBase):
         nd = len(table)
         tp = np.zeros(nd, dtype=np.float64)
         fp = np.zeros(nd, dtype=np.float64)
+        confidence = np.zeros(nd, dtype=np.float64)
         for d in range(nd):
             img_id, conf, iou, difficult, crowd, order = row_to_vars(table.iloc[d])
+            confidence[d] = conf
             if img_id not in matched_ind:
                 matched_ind[img_id] = []
             res, idx = check_box(
@@ -170,7 +173,7 @@ class MeanAveragePrecision2d(MetricBase):
             average_precision = compute_average_precision_with_recall_thresholds(
                 precision, recall, recall_thresholds
             )
-        return average_precision, precision, recall
+        return average_precision, precision, recall, confidence
 
     def _init(self):
         """ Initialize internal state."""
